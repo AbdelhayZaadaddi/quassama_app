@@ -1,0 +1,209 @@
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { onAuthStateChanged, User } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { paddleConfig } from '@/lib/paddle'
+
+const PLANS = [
+  {
+    id: 'personal',
+    name: 'Personal',
+    price: '$2.99',
+    period: '/month',
+    trial: '3 Days Free Trial',
+    badge: 'Most Popular',
+    priceId: paddleConfig.personalPriceId,
+    features: [
+      'Unlimited groups & expenses',
+      'Voice AI — 60 min/month / 7 min/day',
+      'Receipt scanning — 50 scans/month',
+      'Unlimited AI decisions',
+      'No ads',
+    ],
+    highlight: true,
+  },
+  {
+    id: 'family',
+    name: 'Couple / Family',
+    price: '$6.99',
+    period: '/month',
+    trial: null,
+    badge: 'Recommended',
+    priceId: paddleConfig.familyPriceId,
+    features: [
+      'Everything in Personal',
+      'Voice AI — 350 min/month / 15 min/day',
+      'Receipt scanning — 100 scans/month',
+      'Advanced analytics',
+      'Early access to new features',
+    ],
+    highlight: false,
+  },
+]
+
+export default function UpgradePage() {
+  const router = useRouter()
+  const [user, setUser]       = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [paddleReady, setPaddleReady] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (!u) { router.replace('/login'); return }
+      setUser(u)
+      setLoading(false)
+    })
+    return unsub
+  }, [router])
+
+  // Load + initialize Paddle.js
+  useEffect(() => {
+    if (!user) return
+    const script = document.createElement('script')
+    script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js'
+    script.async = true
+    script.onload = () => {
+      const w = window as any
+      if (!w.Paddle) return
+
+      // Only switch to sandbox when the env says sandbox.
+      // In production we DON'T call Environment.set (defaults to live).
+      if (paddleConfig.isSandbox) {
+        w.Paddle.Environment.set('sandbox')
+      }
+
+      w.Paddle.Initialize({
+        token: paddleConfig.token,
+        eventCallback: (data: any) => {
+          if (data.name === 'checkout.completed') {
+            router.replace('/success')
+          }
+        },
+      })
+      setPaddleReady(true)
+    }
+    document.head.appendChild(script)
+    return () => {
+      if (document.head.contains(script)) document.head.removeChild(script)
+    }
+  }, [user, router])
+
+  const handleCheckout = (plan: typeof PLANS[0]) => {
+    const w = window as any
+    if (!w.Paddle || !paddleReady) return
+    setCheckoutLoading(plan.id)
+
+    w.Paddle.Checkout.open({
+      items: [{ priceId: plan.priceId, quantity: 1 }],
+      // passes the Firebase UID so RevenueCat links the subscription
+      customData: { app_user_id: user?.uid },
+      customer: { email: user?.email ?? undefined },
+      successUrl: `${window.location.origin}/success`,
+    })
+
+    setCheckoutLoading(null)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-brand-cream">
+        <div className="w-8 h-8 border-4 border-brand-dark border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-brand-cream">
+      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+        <button onClick={() => router.push('/dashboard')} className="flex items-center gap-2 text-brand-muted hover:text-brand-dark transition-colors text-sm">
+          ← Back
+        </button>
+        <span className="font-display font-bold text-lg text-brand-dark">Upgrade Quassama</span>
+        <div className="w-16" />
+      </header>
+
+      <main className="max-w-2xl mx-auto px-4 py-12">
+        {paddleConfig.isSandbox && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-xl px-4 py-2 text-center">
+            ⚠️ Sandbox / test mode is active. Use test card 4242 4242 4242 4242.
+          </div>
+        )}
+
+        <div className="text-center mb-10">
+          <h1 className="font-display text-4xl font-bold text-brand-dark mb-3">Choose your plan</h1>
+          <p className="text-brand-muted">Unlock the full power of Quassama</p>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          {PLANS.map((plan) => (
+            <div
+              key={plan.id}
+              className={`rounded-3xl p-6 flex flex-col ${
+                plan.highlight ? 'bg-brand-dark text-white' : 'bg-white border border-gray-100'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                  plan.highlight ? 'bg-brand-yellow text-brand-dark' : 'bg-brand-cream text-brand-green'
+                }`}>
+                  {plan.badge}
+                </span>
+                {plan.trial && (
+                  <span className={`text-xs ${plan.highlight ? 'text-brand-yellow' : 'text-brand-green'}`}>
+                    ✨ {plan.trial}
+                  </span>
+                )}
+              </div>
+
+              <h2 className={`font-display text-2xl font-bold mb-1 ${plan.highlight ? 'text-white' : 'text-brand-dark'}`}>
+                {plan.name}
+              </h2>
+              <div className="flex items-baseline gap-1 mb-5">
+                <span className={`text-3xl font-bold ${plan.highlight ? 'text-brand-yellow' : 'text-brand-dark'}`}>
+                  {plan.price}
+                </span>
+                <span className={`text-sm ${plan.highlight ? 'text-white/60' : 'text-brand-muted'}`}>
+                  {plan.period}
+                </span>
+              </div>
+
+              <ul className="flex flex-col gap-2.5 mb-6 flex-1">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm">
+                    <span className={`mt-0.5 ${plan.highlight ? 'text-brand-yellow' : 'text-brand-green'}`}>✓</span>
+                    <span className={plan.highlight ? 'text-white/80' : 'text-brand-muted'}>{f}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                onClick={() => handleCheckout(plan)}
+                disabled={checkoutLoading === plan.id || !paddleReady}
+                className={`w-full py-3 rounded-2xl font-semibold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2 ${
+                  plan.highlight ? 'bg-brand-yellow text-brand-dark hover:opacity-90' : 'bg-brand-dark text-white hover:opacity-90'
+                }`}
+              >
+                {checkoutLoading === plan.id ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : plan.trial ? 'Start Free Trial' : 'Get Started'}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 text-center">
+          <button onClick={() => router.push('/dashboard')} className="text-sm text-brand-muted hover:text-brand-dark transition-colors">
+            Continue with free plan →
+          </button>
+        </div>
+
+        <p className="text-center text-xs text-brand-muted mt-8">
+          Secure payments by Paddle • Cancel anytime •{' '}
+          <a href="https://quassama.com/terms-and-conditions" className="underline hover:text-brand-dark">Terms</a>
+        </p>
+      </main>
+    </div>
+  )
+}

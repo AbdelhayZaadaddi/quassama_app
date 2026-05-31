@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Fraunces:wght@700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-dark:   #1B3A2D;
+  --brand-green:  #2D6A4F;
+  --brand-yellow: #F5C842;
+  --brand-cream:  #F8F7F4;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: var(--brand-cream);
+  color: #1A1A1A;
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-yellow text-brand-dark font-semibold px-6 py-3 rounded-2xl hover:opacity-90 transition-all duration-200 text-sm;
+  }
+  .btn-dark {
+    @apply bg-brand-dark text-white font-semibold px-6 py-3 rounded-2xl hover:opacity-90 transition-all duration-200 text-sm;
+  }
+  .card {
+    @apply bg-white rounded-3xl shadow-sm border border-gray-100 p-6;
+  }
+  .input {
+    @apply w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green focus:border-transparent transition-all;
+  }
+}
