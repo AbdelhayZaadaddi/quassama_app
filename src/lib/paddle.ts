@@ -5,7 +5,7 @@
 //  just change NEXT_PUBLIC_PADDLE_ENV in .env.local
 // ============================================================
 
-const ENV = (process.env.NEXT_PUBLIC_PADDLE_ENV || 'sandbox') as
+const ENV = (process.env.NEXT_PUBLIC_PADDLE_ENV || 'production') as
   | 'sandbox'
   | 'production'
 
