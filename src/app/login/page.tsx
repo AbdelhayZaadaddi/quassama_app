@@ -42,8 +42,9 @@ export default function LoginPage() {
     try {
       await signInWithPopup(auth, googleProvider)
       router.replace('/dashboard')
-    } catch {
-      setError('Google sign-in failed. Please try again.')
+    } catch (err: any) {
+      console.error('Google sign-in error:', err?.code, err?.message)
+      setError(`Google sign-in failed: ${err?.code ?? 'unknown error'}`)
     } finally {
       setLoading(false)
     }
