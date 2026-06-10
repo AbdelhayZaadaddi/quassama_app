@@ -1,19 +1,31 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signOut, onAuthStateChanged, User } from 'firebase/auth'
+import { signOut, onAuthStateChanged, sendEmailVerification, User } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { revenueCatWebLink } from '@/lib/paddle'
+import { fetchSubscription, FREE_SUBSCRIPTION, Subscription } from '@/lib/subscription'
+
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 export default function DashboardPage() {
   const router  = useRouter()
-  const [user, setUser]     = useState<User | null>(null)
+  const [user, setUser]       = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sub, setSub]         = useState<Subscription | null>(null)
+  const [verifySent, setVerifySent] = useState(false)
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       if (!u) { router.replace('/login'); return }
       setUser(u)
       setLoading(false)
+      fetchSubscription(u.uid).then(setSub).catch(() => setSub(FREE_SUBSCRIPTION))
     })
     return unsub
   }, [router])
@@ -21,6 +33,16 @@ export default function DashboardPage() {
   const handleSignOut = async () => {
     await signOut(auth)
     router.replace('/login')
+  }
+
+  const handleResendVerification = async () => {
+    if (!user) return
+    try {
+      await sendEmailVerification(user)
+      setVerifySent(true)
+    } catch {
+      /* ignore — rate limited or already verified */
+    }
   }
 
   if (loading) {
@@ -34,6 +56,9 @@ export default function DashboardPage() {
   const initials = user?.displayName
     ? user.displayName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : user?.email?.[0].toUpperCase() ?? '?'
+
+  const memberSince = formatDate(user?.metadata?.creationTime ?? null)
+  const renewal = sub ? formatDate(sub.renewalDate) : null
 
   return (
     <div className="min-h-screen bg-brand-cream">
@@ -53,6 +78,20 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-12">
+        {/* Email verification banner */}
+        {user && !user.emailVerified && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+            <span>📩 Please verify your email address.</span>
+            {verifySent ? (
+              <span className="text-xs font-medium text-amber-700 whitespace-nowrap">Verification sent ✓</span>
+            ) : (
+              <button onClick={handleResendVerification} className="text-xs font-semibold underline whitespace-nowrap hover:opacity-80">
+                Resend email
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="font-display text-3xl font-bold text-brand-dark mb-1">
             Hello, {user?.displayName?.split(' ')[0] ?? 'there'} 👋
@@ -60,38 +99,117 @@ export default function DashboardPage() {
           <p className="text-brand-muted text-sm">{user?.email}</p>
         </div>
 
-        <div className="card mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-brand-dark">Current Plan</h2>
-            <span className="bg-gray-100 text-brand-muted text-xs font-medium px-3 py-1 rounded-full">Free</span>
+        {/* Plan card — skeleton until subscription resolves */}
+        {sub === null ? (
+          <div className="card mb-4 animate-pulse">
+            <div className="flex items-center justify-between mb-6">
+              <div className="h-5 w-28 bg-gray-100 rounded" />
+              <div className="h-6 w-16 bg-gray-100 rounded-full" />
+            </div>
+            <div className="space-y-2.5 mb-6">
+              <div className="h-4 w-3/4 bg-gray-100 rounded" />
+              <div className="h-4 w-2/3 bg-gray-100 rounded" />
+              <div className="h-4 w-1/2 bg-gray-100 rounded" />
+            </div>
+            <div className="h-12 w-full bg-gray-100 rounded-2xl" />
           </div>
-          <div className="flex flex-col gap-2 text-sm text-brand-muted mb-6">
-            <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> Basic expense tracking</div>
-            <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> Limited groups</div>
-            <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> Up to 10 AI decisions/month</div>
+        ) : sub.active ? (
+          <div className="card mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-brand-dark">Current Plan</h2>
+              <span className="bg-brand-green/10 text-brand-green text-xs font-semibold px-3 py-1 rounded-full">
+                {sub.planName}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 text-sm text-brand-muted mb-6">
+              {renewal && (
+                <div className="flex items-center gap-2">
+                  <span className="text-brand-green">✓</span>
+                  {sub.willRenew ? `Renews on ${renewal}` : `Active until ${renewal} (auto-renew off)`}
+                </div>
+              )}
+              <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> All premium features unlocked</div>
+              <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> Voice AI, receipt scanning &amp; more</div>
+            </div>
+            {revenueCatWebLink ? (
+              <a href={revenueCatWebLink} target="_blank" rel="noreferrer" className="btn-dark w-full text-center block">
+                Manage subscription
+              </a>
+            ) : (
+              <p className="text-xs text-brand-muted text-center">Manage your subscription from the Quassama app.</p>
+            )}
           </div>
-          <button onClick={() => router.push('/upgrade')} className="btn-primary w-full text-center">
-            ✨ Upgrade to Premium
-          </button>
-        </div>
+        ) : (
+          <div className="card mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-brand-dark">Current Plan</h2>
+              <span className="bg-gray-100 text-brand-muted text-xs font-medium px-3 py-1 rounded-full">Free</span>
+            </div>
+            <div className="flex flex-col gap-2 text-sm text-brand-muted mb-6">
+              <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> Basic expense tracking</div>
+              <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> Limited groups</div>
+              <div className="flex items-center gap-2"><span className="text-brand-green">✓</span> Up to 10 AI decisions/month</div>
+            </div>
+            <button onClick={() => router.push('/upgrade')} className="btn-primary w-full text-center">
+              ✨ Upgrade to Premium
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
-          <button onClick={() => router.push('/upgrade')} className="card hover:shadow-md transition-all text-left group cursor-pointer">
-            <div className="text-2xl mb-3">🚀</div>
-            <h3 className="font-semibold text-brand-dark text-sm mb-1">Upgrade Plan</h3>
-            <p className="text-xs text-brand-muted">Unlock Voice AI &amp; more</p>
-          </button>
-          <a href="https://quassama.com/terms-and-conditions" target="_blank" className="card hover:shadow-md transition-all text-left cursor-pointer">
-            <div className="text-2xl mb-3">📄</div>
-            <h3 className="font-semibold text-brand-dark text-sm mb-1">Terms &amp; Conditions</h3>
+          {sub?.active ? (
+            <a
+              href={revenueCatWebLink || '#'}
+              target="_blank"
+              rel="noreferrer"
+              className="group relative overflow-hidden rounded-3xl bg-brand-dark p-6 text-left cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-green/30 blur-2xl transition-opacity group-hover:opacity-80" />
+              <div className="relative">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-xl">⚙️</div>
+                <h3 className="mb-1 text-sm font-semibold text-white">Billing</h3>
+                <p className="text-xs text-white/60">Manage your subscription</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand-yellow transition-transform group-hover:translate-x-0.5">
+                  Open portal <span aria-hidden>→</span>
+                </span>
+              </div>
+            </a>
+          ) : (
+            <button
+              onClick={() => router.push('/upgrade')}
+              className="group relative overflow-hidden rounded-3xl bg-brand-dark p-6 text-left cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-brand-yellow/30 blur-2xl transition-opacity group-hover:opacity-90" />
+              <div className="relative">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-yellow text-xl">🚀</div>
+                <h3 className="mb-1 text-sm font-semibold text-white">Upgrade Plan</h3>
+                <p className="text-xs text-white/60">Unlock Voice AI &amp; more</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand-yellow transition-transform group-hover:translate-x-0.5">
+                  See plans <span aria-hidden>→</span>
+                </span>
+              </div>
+            </button>
+          )}
+          <a
+            href="https://quassama.com/terms-and-conditions"
+            target="_blank"
+            className="group relative overflow-hidden rounded-3xl bg-white border border-gray-100 p-6 text-left cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+          >
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-cream text-xl">📄</div>
+            <h3 className="mb-1 text-sm font-semibold text-brand-dark">Terms &amp; Conditions</h3>
             <p className="text-xs text-brand-muted">Read our policies</p>
+            <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand-green transition-transform group-hover:translate-x-0.5">
+              Read more <span aria-hidden>→</span>
+            </span>
           </a>
         </div>
 
-        <div className="mt-6 bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-brand-muted">Your User ID</span>
-          <span className="text-xs font-mono text-brand-dark truncate max-w-[200px]">{user?.uid}</span>
-        </div>
+        {memberSince && (
+          <div className="mt-6 bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+            <span className="text-xs text-brand-muted">Member since</span>
+            <span className="text-xs font-medium text-brand-dark">{memberSince}</span>
+          </div>
+        )}
       </main>
     </div>
   )
