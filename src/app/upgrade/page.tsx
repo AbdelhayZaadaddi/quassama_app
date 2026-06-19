@@ -76,9 +76,28 @@ export default function UpgradePage() {
 
       w.Paddle.Initialize({
         token: paddleConfig.token,
-        eventCallback: (data: any) => {
-          if (data.name === 'checkout.completed') {
-            router.replace('/success')
+        eventCallback: (event: any) => {
+          if (event.name === 'checkout.completed') {
+            // RevenueCat ignores Paddle customData, so we must explicitly
+            // link the transaction to the Firebase UID. Do it BEFORE redirect.
+            const fetchToken = event?.data?.transaction_id
+            const uid = user?.uid
+
+            if (fetchToken && uid) {
+              fetch('/api/link-revenuecat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid, fetchToken }),
+              })
+                .catch((e) => console.error('link-revenuecat call failed', e))
+                .finally(() => router.replace('/success'))
+            } else {
+              console.error('Missing transaction_id or uid on checkout.completed', {
+                fetchToken,
+                uid,
+              })
+              router.replace('/success')
+            }
           }
         },
       })
@@ -97,7 +116,8 @@ export default function UpgradePage() {
 
     w.Paddle.Checkout.open({
       items: [{ priceId: plan.priceId, quantity: 1 }],
-      // passes the Firebase UID so RevenueCat links the subscription
+      // Kept for traceability in Paddle's dashboard. NOTE: RevenueCat does
+      // NOT read this — linking happens via /api/link-revenuecat on completion.
       customData: { app_user_id: user?.uid },
       customer: { email: user?.email ?? undefined },
       successUrl: `${window.location.origin}/success`,
