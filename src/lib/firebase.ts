@@ -1,5 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth'
+import { getFirestore, Firestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,6 +14,7 @@ const firebaseConfig = {
 // Lazy singletons so an empty/missing key at build time never crashes the build.
 let _app: FirebaseApp | null = null
 let _auth: Auth | null = null
+let _db: Firestore | null = null
 
 function getApp(): FirebaseApp {
   if (_app) return _app
@@ -28,5 +30,12 @@ export const auth = (typeof window !== 'undefined'
       return _auth
     })()
   : (null as unknown as Auth))
+
+export const db = (typeof window !== 'undefined'
+  ? (() => {
+      _db = _db ?? getFirestore(getApp())
+      return _db
+    })()
+  : (null as unknown as Firestore))
 
 export const googleProvider = new GoogleAuthProvider()

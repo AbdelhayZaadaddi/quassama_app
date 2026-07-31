@@ -20,7 +20,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @layer components {
+  .animate-shimmer {
+    background-size: 200% 100%;
+    animation: shimmer 6s linear infinite;
+  }
+
   .btn-primary {
     @apply bg-brand-yellow text-brand-dark font-semibold px-6 py-3 rounded-2xl hover:opacity-90 transition-all duration-200 text-sm;
   }
