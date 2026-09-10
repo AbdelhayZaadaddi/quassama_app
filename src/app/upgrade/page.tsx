@@ -21,23 +21,6 @@ const PLANS = [
       'Unlimited AI decisions',
       'No ads',
     ],
-    highlight: true,
-  },
-  {
-    id: 'family',
-    name: 'Couple / Family',
-    price: '$6.99',
-    period: '/month',
-    trial: null,
-    badge: 'Recommended',
-    priceId: paddleConfig.familyPriceId,
-    features: [
-      'Everything in Personal',
-      'Voice AI — 350 min/month / 15 min/day',
-      'Receipt scanning — 100 scans/month',
-      'Advanced analytics',
-      'Early access to new features',
-    ],
     highlight: false,
   },
   {
@@ -46,7 +29,7 @@ const PLANS = [
     price: '$29.99',
     period: '/year',
     trial: null,
-    badge: 'Best Value',
+    badge: 'Recommended',
     priceId: paddleConfig.proAnnualPriceId,
     features: [
       'Everything in Personal',
@@ -55,7 +38,7 @@ const PLANS = [
       'Receipt scanning — 50 scans/month',
       'No ads',
     ],
-    highlight: false,
+    highlight: true,
   },
 ]
 
