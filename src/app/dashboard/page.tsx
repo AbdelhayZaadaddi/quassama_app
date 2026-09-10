@@ -366,12 +366,12 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-brand-cream">
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <a href="https://quassama.com" className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-brand-dark flex items-center justify-center">
             <img src="/assets/logo1.png" alt="Quassama" className="h-5 w-5" />
           </div>
           <span className="font-display font-bold text-xl text-brand-dark">Quassama</span>
-        </a>
+        </div>
         <ProfileMenu initials={initials} onSignOut={handleSignOut} />
       </header>
 

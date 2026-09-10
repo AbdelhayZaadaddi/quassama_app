@@ -53,12 +53,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-brand-cream flex flex-col">
       <header className="flex items-center justify-between px-6 py-5">
-        <a href="https://quassama.com" className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-full bg-brand-dark flex items-center justify-center">
             <img src="/assets/logo1.png" alt="Quassama" className="h-5 w-5" />
           </div>
           <span className="font-display font-bold text-xl text-brand-dark">Quassama</span>
-        </a>
+        </div>
         <a href="https://quassama.com" className="text-sm text-brand-muted hover:text-brand-dark transition-colors">
           ← Back to website
         </a>

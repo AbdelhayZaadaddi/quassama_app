@@ -23,6 +23,9 @@ export const paddleConfig = {
   familyPriceId: isSandbox
     ? process.env.NEXT_PUBLIC_PADDLE_SANDBOX_FAMILY_PRICE_ID!
     : process.env.NEXT_PUBLIC_PADDLE_PROD_FAMILY_PRICE_ID!,
+  proAnnualPriceId: isSandbox
+    ? process.env.NEXT_PUBLIC_PADDLE_SANDBOX_PRO_ANNUAL_PRICE_ID!
+    : process.env.NEXT_PUBLIC_PADDLE_PROD_PRO_ANNUAL_PRICE_ID!,
 }
 
 export const revenueCatWebLink =

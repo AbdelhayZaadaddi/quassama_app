@@ -40,6 +40,23 @@ const PLANS = [
     ],
     highlight: false,
   },
+  {
+    id: 'pro-annual',
+    name: 'Pro Annual',
+    price: '$29.99',
+    period: '/year',
+    trial: null,
+    badge: 'Best Value',
+    priceId: paddleConfig.proAnnualPriceId,
+    features: [
+      'Everything in Personal',
+      'Billed once a year — save vs monthly',
+      'Voice AI — 60 min/month / 7 min/day',
+      'Receipt scanning — 50 scans/month',
+      'No ads',
+    ],
+    highlight: false,
+  },
 ]
 
 export default function UpgradePage() {
