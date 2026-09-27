@@ -9,7 +9,7 @@ const PLANS = [
   {
     id: 'personal',
     name: 'Pro',
-    price: '$2.99',
+    price: '$4.99',
     period: '/month',
     trial: '3 Days Free Trial',
     badge: 'Most Popular',
@@ -26,7 +26,7 @@ const PLANS = [
   {
     id: 'pro-annual',
     name: 'Pro Annual',
-    price: '$29.99',
+    price: '$49.99',
     period: '/year',
     trial: null,
     badge: 'Recommended',
@@ -48,6 +48,8 @@ export default function UpgradePage() {
   const [loading, setLoading] = useState(true)
   const [paddleReady, setPaddleReady] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
+  // Live prices from Paddle, keyed by priceId. Falls back to PLANS[].price.
+  const [livePrices, setLivePrices] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -102,6 +104,21 @@ export default function UpgradePage() {
         },
       })
       setPaddleReady(true)
+
+      // Pull the real prices (localized to the visitor's currency) so the
+      // cards always match what Paddle will charge.
+      w.Paddle.PricePreview({
+        items: PLANS.map((p) => ({ priceId: p.priceId, quantity: 1 })),
+      })
+        .then((res: any) => {
+          const prices: Record<string, string> = {}
+          for (const item of res?.data?.details?.lineItems ?? []) {
+            const formatted = item?.formattedUnitTotals?.subtotal
+            if (item?.price?.id && formatted) prices[item.price.id] = formatted
+          }
+          setLivePrices(prices)
+        })
+        .catch((e: any) => console.error('Paddle price preview failed', e))
     }
     document.head.appendChild(script)
     return () => {
@@ -182,7 +199,7 @@ export default function UpgradePage() {
               </h2>
               <div className="flex items-baseline gap-1 mb-5">
                 <span className={`text-3xl font-bold ${plan.highlight ? 'text-brand-yellow' : 'text-brand-dark'}`}>
-                  {plan.price}
+                  {livePrices[plan.priceId] ?? plan.price}
                 </span>
                 <span className={`text-sm ${plan.highlight ? 'text-white/60' : 'text-brand-muted'}`}>
                   {plan.period}
