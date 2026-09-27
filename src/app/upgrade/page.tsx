@@ -8,7 +8,7 @@ import { paddleConfig } from '@/lib/paddle'
 const PLANS = [
   {
     id: 'personal',
-    name: 'Personal',
+    name: 'Pro',
     price: '$2.99',
     period: '/month',
     trial: '3 Days Free Trial',
@@ -32,7 +32,7 @@ const PLANS = [
     badge: 'Recommended',
     priceId: paddleConfig.proAnnualPriceId,
     features: [
-      'Everything in Personal',
+      'Everything in Pro',
       'Billed once a year — save vs monthly',
       'Voice AI — 60 min/month / 7 min/day',
       'Receipt scanning — 50 scans/month',
