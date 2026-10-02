@@ -28,7 +28,7 @@ const PLANS = [
     name: 'Pro Annual',
     price: '$49.99',
     period: '/year',
-    trial: null,
+    trial: '3 Days Free Trial',
     badge: 'Recommended',
     priceId: paddleConfig.proAnnualPriceId,
     features: [
@@ -50,6 +50,8 @@ export default function UpgradePage() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
   // Live prices from Paddle, keyed by priceId. Falls back to PLANS[].price.
   const [livePrices, setLivePrices] = useState<Record<string, string>>({})
+  // Live trial labels from Paddle, keyed by priceId. Falls back to PLANS[].trial.
+  const [liveTrials, setLiveTrials] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -112,11 +114,20 @@ export default function UpgradePage() {
       })
         .then((res: any) => {
           const prices: Record<string, string> = {}
+          const trials: Record<string, string> = {}
           for (const item of res?.data?.details?.lineItems ?? []) {
+            const id = item?.price?.id
+            if (!id) continue
             const formatted = item?.formattedUnitTotals?.subtotal
-            if (item?.price?.id && formatted) prices[item.price.id] = formatted
+            if (formatted) prices[id] = formatted
+            const trial = item?.price?.trialPeriod
+            if (trial?.frequency && trial?.interval) {
+              const unit = trial.interval.charAt(0).toUpperCase() + trial.interval.slice(1)
+              trials[id] = `${trial.frequency} ${unit}${trial.frequency > 1 ? 's' : ''} Free Trial`
+            }
           }
           setLivePrices(prices)
+          setLiveTrials(trials)
         })
         .catch((e: any) => console.error('Paddle price preview failed', e))
     }
@@ -187,9 +198,9 @@ export default function UpgradePage() {
                 }`}>
                   {plan.badge}
                 </span>
-                {plan.trial && (
+                {(liveTrials[plan.priceId] ?? plan.trial) && (
                   <span className={`text-xs ${plan.highlight ? 'text-brand-yellow' : 'text-brand-green'}`}>
-                    ✨ {plan.trial}
+                    ✨ {liveTrials[plan.priceId] ?? plan.trial}
                   </span>
                 )}
               </div>
